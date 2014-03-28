@@ -6,12 +6,18 @@ $(document).ready( function() {
 		var tags = $(this).find("input[name='tags']").val();
 		getUnanswered(tags);
 	});
+	$('.inspiration-getter').submit( function(event){
+		// zero out results if previous search has run
+		$('.results').html('');
+		// get the value of the tags the user submitted
+		var tags = $(this).find("input[name='answerers']").val();
+		getInspired(tags);
+	});
 });
 
 // this function takes the question object returned by StackOverflow 
 // and creates new result to be appended to DOM
 var showQuestion = function(question) {
-	
 	// clone our result template code
 	var result = $('.templates .question').clone();
 	
@@ -32,14 +38,38 @@ var showQuestion = function(question) {
 	// set some properties related to asker
 	var asker = result.find('.asker');
 	asker.html('<p>Name: <a target="_blank" href=http://stackoverflow.com/users/' + question.owner.user_id + ' >' +
-													question.owner.display_name +
-												'</a>' +
-							'</p>' +
- 							'<p>Reputation: ' + question.owner.reputation + '</p>'
-	);
+		question.owner.display_name +
+		'</a>' +
+		'</p>' +
+		'<p>Reputation: ' + question.owner.reputation + '</p>'
+		);
 
 	return result;
 };
+
+var showUser = function(user) {
+
+	// clone our result template code
+	var result = $('.templates .inspired').clone();
+	
+	// Set the user id in result
+	var userElem = result.find('.users-text a');
+	userElem.attr('href', user.link);
+	userElem.text(user.user_id);
+
+	// set the profile image property in result
+	var tg = result.find('img');
+	tg.attr('src',user.profile_image);
+
+	// set the reputation points in result
+	var rep = result.find('.repu');
+	rep.text(user.reputation);
+
+	var dis = result.find('.display-name');
+	dis.html("<b>" + user.display_name + "</b>");
+	return result;
+};
+
 
 
 // this function takes the results object from StackOverflow
@@ -61,32 +91,60 @@ var showError = function(error){
 var getUnanswered = function(tags) {
 	
 	// the parameters we need to pass in our request to StackOverflow's API
-	var request = {tagged: tags,
-								site: 'stackoverflow',
-								order: 'desc',
-								sort: 'creation'};
-	
-	var result = $.ajax({
-		url: "http://api.stackexchange.com/2.2/questions/unanswered",
-		data: request,
-		dataType: "jsonp",
-		type: "GET",
+	var request = {
+		tagged: tags,
+		site: 'stackoverflow',
+		order: 'desc',
+		sort: 'creation'};
+
+		var result = $.ajax({
+			url: "http://api.stackexchange.com/2.2/questions/unanswered",
+			data: request,
+			dataType: "jsonp",
+			type: "GET",
 		})
-	.done(function(result){
-		var searchResults = showSearchResults(request.tagged, result.items.length);
+		.done(function(result){
+			var searchResults = showSearchResults(request.tagged, result.items.length);
+			$('.search-results').html(searchResults);
 
-		$('.search-results').html(searchResults);
-
-		$.each(result.items, function(i, item) {
-			var question = showQuestion(item);
-			$('.results').append(question);
+			$.each(result.items, function(i, item) {
+				var question = showQuestion(item);
+				$('.results').append(question);
+			});
+		})
+		.fail(function(jqXHR, error, errorThrown){
+			var errorElem = showError(error);
+			$('.search-results').append(errorElem);
 		});
-	})
-	.fail(function(jqXHR, error, errorThrown){
-		var errorElem = showError(error);
-		$('.search-results').append(errorElem);
-	});
-};
+	};
 
+var getInspired = function(tags) {
+	
+	// the parameters we need to pass in our request to StackOverflow's API
+	var request = {
+		tagged: tags,
+		site: 'stackoverflow',
+		order: 'desc',
+		sort: 'creation'};
+
+		var result = $.ajax({
+			url: "http://api.stackexchange.com/2.2/tags/"+ tags +"/top-answerers/all_time",
+			data: request,
+			dataType: "jsonp",
+			type: "GET",
+		})
+		.done(function(result){
+			var searchResults = showSearchResults(request.tagged, result.items.length);
+			$('.search-results').html(searchResults);
+			$.each(result.items, function(i, item) {
+				var user = showUser(item.user);
+				$('.results').append(user);
+			});
+		})
+		.fail(function(jqXHR, error, errorThrown){
+			var errorElem = showError(error);
+			$('.search-results').append(errorElem);
+		});
+	};
 
 
